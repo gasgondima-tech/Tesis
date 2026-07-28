@@ -1,0 +1,16 @@
+reset;
+
+# para correr presionar command & R
+model #(nombre modelo).mod;
+
+data #(nombre modelo).dat;
+
+option solver cplex;
+
+solve;
+
+display Q, Qe, V;
+
+display beneficio;
+
+#display I, E, P, F, Q, Qe, V, beneficio > Embalse.txt;
