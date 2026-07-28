@@ -1,0 +1,120 @@
+# --- Parámetros
+param T; #  tiempo en meses de las series de tiempo (180)
+param J; # número de meses por año
+param K; # número de años
+param JJ; # Número de tramos de la curva de beneficio por volumen
+param KK; # Número de tramos de la curva de beneficio por caudal 
+
+param I{t in 1..T};
+param P{t in 1..T};
+param E{t in 1..T};
+param F{t in 1..T};
+param mv{jj in 1..JJ};
+param dV{jj in 1..JJ};
+param mq{kk in 1..KK};
+param dQ{kk in 1..KK};
+
+param wq := 1; # ponderación beneficio por Q
+param wv := 0; # ponderación beneficio por V
+param dt := 1; # intervalo de tiempo de cálculo, en meses
+param Vini := 85204591; # volumen inicial, en m3 (volumen al 1 enero 2010, según ACER)
+param Vfin := 16003406; # volumen final, en m3 (volumen al 31 diciembre 2024)
+param Vmax := 100000000; # volumen máximo posible embalsado, en m3
+param Vmin := 1000000; # volumen mínimo del embalse, en m3
+param Vmaxea := 40000000; # volumen máximo de entrega anual, en m3.(Entregando todo menos 1hm3 para que no quede seco).
+param Vminea :=  1000000; # volumen mínimo de entrega anual, en m3. 
+param Qmax := 20891500; # caudal máximo de descarga mensual, en m3/mes (capacidad de canales: 7.8 m3/s en 31 días)
+param Qmin := 0; # caudal mínimo de descarga mensual, en m3/mes (descarga al rio Hurtado: 0.1 m3/s en 30 días)
+param Qini := 5234962; # caudal inicial que sale del embalse, en m3/mes (el 1 enero 2010)
+param Q0 := 0; # Q inicial de la curva de beneficio por Q
+param V0 := Vmin; # V inicial de la curva de beneficio por V
+param DQ := 350000; # delta caudal en m3. Se uso 1000000 y 20700000 también.
+
+# --- Variables (Dominio)
+var Q{t in 1..T} >= 0;
+var V{t in 1..T} >= 0;
+var Qe{t in 1..T} >= 0;
+var w{jj in 1..JJ, t in 1..T} binary;
+var h{kk in 1..KK, t in 1..T} binary;
+var vv{jj in 1..JJ, t in 1..T} >= 0;
+var qq{kk in 1..KK, t in 1..T} >= 0;
+
+# --- Función objetivo
+maximize beneficio:
+wq*sum{t in 1..T, kk in 1..KK}mq[kk]*qq[kk,t] +
+wv*sum{t in 1..T, jj in 1..JJ}mv[jj]*vv[jj,t];
+ 
+# --- Restricciones
+subject to
+R1: # caudal inicial que sale
+Q[1] = Qini;
+
+R21: # volumen inicial
+V[1] = Vini;
+
+R22: # volumen final
+V[T] = Vfin;
+
+R23{t in 2..T}: # volumen máximo
+V[t] <= Vmax;
+
+R24{t in 2..T-1}: # volumen mínimo
+V[t] >= Vmin;
+
+R25{t in 2..T}: # caudal máximo de descarga mensual
+Q[t] <= Qmax;
+
+# - Caudal mínimo de descarga mensual
+#R105{t in 1..T}:
+#Q[t] >= Qmin;
+ 
+# - Variación volumen límite entre 2 periodos consecutivos
+#R1{kk in 1..KK, t in (kk-1)*JJ+1+1..kk*JJ}:
+R100{t in 2..T}:
+Q[t] - Q[t-1] <= DQ;
+
+#R2{kk in 1..KK, t in (kk-1)*JJ+1+1..kk*JJ}:
+R101{t in 2..T}:
+Q[t] - Q[t-1] >= -DQ;
+
+# - Volumen máximo de entrega anual
+R102{k in 1..K}:
+sum{t in (k-1)*J+1..k*J}Q[t] <= Vmaxea;
+
+# - Volumen mínimo de entrega anual
+R103{k in 1..K}:
+sum{t in (k-1)*J+1..k*J}Q[t] >= Vminea;
+
+# - Caudal exceso
+R104{t in 1..T}:
+Qe[t] = 0;
+
+# - Balance
+Balance {t in 2..T}:
+V[t] = (if t=1 then Vini else V[t-1]) + I[t] + P[t] - Q[t] - E[t] - F[t] - Qe[t];
+ 
+# -- Beneficio por caudal (función no convexa a trozos)
+R51{t in 1..T}:
+Q[t] = Q0 + sum{kk in 1..KK}qq[kk,t];
+
+R52{t in 1..T, kk in 1..KK}:
+qq[kk,t] <= dQ[kk]*h[kk,t];
+
+R53{t in 1..T, kk in 1..KK-1}:
+qq[kk,t] >= dQ[kk]*h[kk+1,t];
+
+R54{t in 1..T, kk in 1..KK-1}:
+h[kk+1,t] <= h[kk,t];
+
+# -- Beneficio por volumen (función no convexa a trozos)
+R61{t in 1..T}:
+V[t] = V0 + sum{jj in 1..JJ}vv[jj,t];
+
+R62{t in 1..T, jj in 1..JJ}:
+vv[jj,t] <= dV[jj]*w[jj,t];
+
+R63{t in 1..T, jj in 1..JJ-1}:
+vv[jj,t] >= dV[jj]*w[jj+1,t];
+
+R64{t in 1..T, jj in 1..JJ-1}:
+w[jj+1,t] <= w[jj,t];
