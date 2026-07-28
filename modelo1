@@ -1,0 +1,91 @@
+# --- Parámetros
+param T; # tiempo total en meses
+param J; # número de meses por año
+param K; # número de años
+
+param I{t in 1..T};
+param P{t in 1..T};
+param E{t in 1..T};
+param F{t in 1..T};
+param alfa{t in 1..T};
+
+param dt := 1; # intervalo de tiempo de calculo, en meses
+param Vini := 85204591; # volumen inicial, en m3 (volumen al 1 enero 2010, según ACER)
+param Vfin := 16003406; # volumen final, en m3 (volumen al 31 diciembre 2024)
+param Vmax := 100000000; # volumen máximo posible, en m3 (capacidad del embalse)
+param Vmin := 1000000; # volumen mínimo, en m3 (se fuerza a que nunca quede seco)
+param Vmaxea := 40000000; # volumen máximo de entrega anual, en m3.
+param Vminea := 1000000; # volumen mínimo de entrega anual, en m3. 
+param Qmax := 20891500; # caudal máximo de descarga mensual, en m3/mes 
+param Qmin := 0; # caudal mínimo de descarga mensual, en m3/mes 
+param Qini := 5234962; # caudal inicial que sale del embalse, en m3/mes (el 1 enero 2010)
+param DQ := 350000; # delta caudal en m3, se analizó con 1000000 ó 20700000.
+
+# --- Variables (Dominio)
+var Q{t in 1..T} >= 0;
+var V{t in 1..T} >= 0;
+var Qe{t in 1..T} >= 0;
+
+# --- Función objetivo
+maximize beneficio:
+sum{t in 1..T}alfa[t]*Q[t];
+
+# --- Restricciones
+subject to
+
+# - Variación volumen límite entre 2 periodos consecutivos
+#R1{k in 1..K, t in (k-1)*J+1+1..k*J}:
+R1{t in 2..T}:
+Q[t] - Q[t-1] <= DQ;
+
+#R2{k in 1..K, t in (k-1)*J+1+1..k*J}:
+R2{t in 2..T}:
+Q[t] - Q[t-1] >= -DQ;
+
+# - Volumen máximo de entrega anual
+R9{k in 1..K}:
+sum{t in (k-1)*J+1..k*J}Q[t] <= Vmaxea;
+ 
+# - Volumen mínimo de entrega anual
+R10{k in 1..K}:
+sum{t in (k-1)*J+1..k*J}Q[t] >= Vminea;
+
+# - Volumen máximo en el embalse
+R11{t in 1..T}:
+V[t] <= Vmax;
+
+# - Volumen mínimo en el embalse
+R12{t in 1..T}:
+V[t] >= Vmin;
+
+# - Caudal máximo de descarga mensual
+R13{t in 1..T}:
+Q[t] <= Qmax;
+
+# - Caudal mínimo de descarga mensual
+R14{t in 1..T}:
+Q[t] >= Qmin;
+
+# - Volumen inicial
+R15:
+V[1] = Vini;
+
+# - Volumen final
+R16: 
+V[T] = Vfin;
+
+# - Caudal inicial que sale
+R17:
+Q[1] = Qini;
+
+# - Caudal final que sale
+#R18: 
+#Q[T] = Qfin;
+
+# - Caudal exceso
+R19{t in 1..T}:
+Qe[t] = 0;
+
+# - Balance
+Balance {t in 2..T}:
+V[t] = (if t=1 then Vini else V[t-1]) + I[t] + P[t] - Q[t] - E[t] - F[t] - Qe[t];
