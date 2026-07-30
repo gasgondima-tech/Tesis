@@ -79,9 +79,6 @@ V[T] = Vfin;
 R17:
 Q[1] = Qini;
 
-# - Caudal final que sale
-#R18: 
-#Q[T] = Qfin;
 
 # - Caudal exceso
 R19{t in 1..T}:
