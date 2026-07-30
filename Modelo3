@@ -64,12 +64,8 @@ V[t] >= Vmin;
 R25{t in 2..T}: # caudal máximo de descarga mensual
 Q[t] <= Qmax;
 
-# - Caudal mínimo de descarga mensual
-#R105{t in 1..T}:
-#Q[t] >= Qmin;
  
 # - Variación volumen límite entre 2 periodos consecutivos
-#R1{kk in 1..KK, t in (kk-1)*JJ+1+1..kk*JJ}:
 R100{t in 2..T}:
 Q[t] - Q[t-1] <= DQ;
 
